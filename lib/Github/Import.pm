@@ -36,17 +36,28 @@ class Github::Import with MooseX::Getopt {
         },
     );
 
-    has [qw/create add_remote push/] => (
+    has [qw/create add_remote push push_tags/] => (
         is       => 'ro',
         isa      => 'Bool',
         default  => sub { 1 },
         required => 1,
     );
 
+    has push_all => (
+        is  => "ro",
+        isa => "Bool",
+    );
+
     has remote => (
         is      => "ro",
         isa     => "Str",
         default => "github",
+    );
+
+    has refspec => (
+        is      => "ro",
+        isa     => "Str",
+        default => "master",
     );
 
     # internals
@@ -164,9 +175,14 @@ class Github::Import with MooseX::Getopt {
 
     method do_push() {
         my $remote = $self->remote;
-        my $branch = 'master'; # FIXME: introspect and push everything
+        my $refspec = $self->refspec;
+
+        my @args = $self->push_all
+            ? ( "--all", $self->remote )
+            : ( $self->push_tags ? "--tags" : (), $self->remote, $self->refspec );
+
         $self->run_git(
-            "push $remote $branch",
+            "push @args",
             print_output => 1,
         );
     }
