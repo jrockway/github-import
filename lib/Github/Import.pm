@@ -19,6 +19,11 @@ class Github::Import with MooseX::Getopt {
 
     has '+username' => ( default => sub { $ENV{USER} } );
 
+    has dry_run => (
+        isa => "Bool",
+        is  => "ro",
+    );
+
     has 'project' => (
         is       => 'ro',
         isa      => Dir,
@@ -121,6 +126,7 @@ class Github::Import with MooseX::Getopt {
     my $LOGIN_URI = URI->new('https://github.com/login');
     my $LOGIN_SUBMIT_URI = URI->new('https://github.com/session');
     method do_login() {
+        return if $self->dry_run;
         my $ua = $self->user_agent;
         my $res = $ua->get($LOGIN_URI);
         $self->err('Error getting login page: ' . $res->status_line) unless $res->is_success;
@@ -139,9 +145,10 @@ class Github::Import with MooseX::Getopt {
     my $CREATE_URI = URI->new('http://github.com/repositories/new');
     my $CREATE_SUBMIT_URI = URI->new('http://github.com/repositories');
     method do_create(){
+        return if $self->dry_run;
         my $ua = $self->user_agent;
         my $res = $ua->get($CREATE_URI);
-        $self->err('Error getting creation page') unless $res->is_success;
+        $self->err('Error getting creation page: ' . $res->status_line) unless $res->is_success;
         $res = $ua->request(
             POST( $CREATE_SUBMIT_URI, [
                 'repository[name]'   => $self->project_name,
@@ -156,11 +163,15 @@ class Github::Import with MooseX::Getopt {
     };
 
     method run_git(Str $command, Bool :$ignore_errors, Bool :$print_output){
-        my $dir = pushd $self->project;
-        my $output = `/usr/bin/env git $command 2>&1`;
-        $self->err("Error running 'git $command': $output")
-          if $output =~ /^fatal:/sm && !$ignore_errors;
-        $self->msg($output) if $output && $print_output;
+        if ( $self->dry_run ) {
+            warn "/usr/bin/env git $command\n",
+        } else {
+            my $dir = pushd $self->project;
+            my $output = `/usr/bin/env git $command 2>&1`;
+            $self->err("Error running 'git $command': $output")
+              if $output =~ /^fatal:/sm && !$ignore_errors;
+            $self->msg($output) if $output && $print_output;
+        }
     }
 
     method do_add_remote() {
