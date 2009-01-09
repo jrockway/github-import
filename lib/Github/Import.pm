@@ -104,7 +104,7 @@ class Github::Import with MooseX::Getopt {
     method do_login() {
         my $ua = $self->user_agent;
         my $res = $ua->get($LOGIN_URI);
-        $self->err('Error getting login page') unless $res->is_success;
+        $self->err('Error getting login page: ' . $res->status_line) unless $res->is_success;
         $res = $ua->request(
             POST( $LOGIN_SUBMIT_URI, [
                 login    => $self->username,
