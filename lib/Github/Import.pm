@@ -55,7 +55,7 @@ class Github::Import with MooseX::Getopt {
         isa      => 'Str',
         default  => sub {
             my $self = shift;
-            return Path::Class::File->new($self->project->absolute)->basename;
+            return lc Path::Class::File->new($self->project->absolute)->basename;
         },
         cmd_flag => "project-name",
         documentation => "the name of the project to create",
@@ -83,7 +83,8 @@ class Github::Import with MooseX::Getopt {
         is       => "ro",
         isa      => "Bool",
         cmd_flag => "add-remote",
-        documentation => "add a remote for github to .git/config",
+        default  => 1,
+        documentation => "add a remote for github to .git/config (defaults to true)",
     );
 
     has push_tags => (
@@ -91,6 +92,7 @@ class Github::Import with MooseX::Getopt {
         is       => "ro",
         isa      => "Bool",
         cmd_flag => "tags",
+        default  => 1,
         documentation => "specify --tags to push (default is true)",
     );
 
@@ -125,7 +127,7 @@ class Github::Import with MooseX::Getopt {
         lazy    => 1,
         default => sub {
             my $self = shift;
-            tt 'git@github.com:[% self.username %]/[% self.project_name %].git';
+            tt lc 'git@github.com:[% self.username %]/[% self.project_name %].git';
         },
         documentation => "override the default github push uri",
     );
@@ -224,7 +226,7 @@ class Github::Import with MooseX::Getopt {
 
         # XXX: not sure how to detect errors here, other than the obvious
         $self->err('Error creating project') unless $res->is_success;
-        return tt 'http://github.com/[% self.username %]/[% self.project_name %]/tree/master';
+        return lc tt 'http://github.com/[% self.username %]/[% self.project_name %]/tree/master';
     };
 
     method run_git(Str $command, Bool :$ignore_errors, Bool :$print_output){
