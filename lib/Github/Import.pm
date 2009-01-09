@@ -51,6 +51,7 @@ class Github::Import with MooseX::Getopt {
 
     has project_name => (
         traits   => [qw(Getopt)],
+        is       => 'ro',
         isa      => 'Str',
         default  => sub {
             my $self = shift;
