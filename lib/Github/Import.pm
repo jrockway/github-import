@@ -1,6 +1,7 @@
 use MooseX::Declare;
 
 class Github::Import with MooseX::Getopt {
+    use Moose::Util::TypeConstraints qw(enum);
     use MooseX::Types::Path::Class 'Dir';
     use LWP::UserAgent;
     use HTTP::Request::Common 'POST';
@@ -8,7 +9,8 @@ class Github::Import with MooseX::Getopt {
     use URI;
     use String::TT 'tt';
     use File::pushd 'pushd';
-    use namespace::clean -except => ['meta'];
+
+    use namespace::clean -except => 'meta';
 
     # command-line args
     has username => (
@@ -91,12 +93,13 @@ class Github::Import with MooseX::Getopt {
         documentation => "specify --tags to push (default is true)",
     );
 
-    has push_all => (
-        traits   => [qw(Getopt)],
-        is       => "ro",
-        isa      => "Bool",
-        cmd_flag => "all",
-        documentation => "specify --all to push (default is false)",
+    has push_mode => (
+        traits    => [qw(Getopt)],
+        is        => "ro",
+        isa       => enum([qw(all mirror)]),
+        predicate => "has_push_mode",
+        cmd_flag  => "push-mode",
+        documentation => "'all' or 'mirror', overrides other push options",
     );
 
     has remote => (
@@ -122,7 +125,8 @@ class Github::Import with MooseX::Getopt {
         default => sub {
             my $self = shift;
             tt 'git@github.com:[% self.username %]/[% self.project_name %].git';
-        }
+        },
+        documentation => "override the default github push uri",
     );
 
     # internals
@@ -245,11 +249,11 @@ class Github::Import with MooseX::Getopt {
     }
 
     method do_push() {
-        my $remote = $self->remote;
+        my $remote = $self->add_remote ? $self->remote : $self->push_uri;
         my $refspec = $self->refspec;
 
-        my @args = $self->push_all
-            ? ( "--all", $self->remote )
+        my @args = $self->has_push_mode
+            ? ( "--" . $self->push_mode, $self->remote )
             : ( $self->push_tags ? "--tags" : (), $self->remote, $self->refspec );
 
         $self->run_git(
