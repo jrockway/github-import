@@ -115,6 +115,16 @@ class Github::Import with MooseX::Getopt {
         documentation => "the refspec to specify to push (default is 'master')",
     );
 
+    has push_uri => (
+        isa     => "Str",
+        is      => "ro",
+        lazy    => 1,
+        default => sub {
+            my $self = shift;
+            tt 'git@github.com:[% self.username %]/[% self.project_name %].git';
+        }
+    );
+
     # internals
     has 'user_agent' => (
         traits   => ['NoGetopt'],
@@ -226,7 +236,7 @@ class Github::Import with MooseX::Getopt {
 
     method do_add_remote() {
         my $remote = $self->remote;
-        my $push = tt 'git@github.com:[% self.username %]/[% self.project_name %].git';
+        my $push   = $self->push_uri;
         $self->run_git(
             "remote add $remote $push",
             ignore_errors => 1,
