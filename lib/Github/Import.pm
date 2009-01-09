@@ -41,6 +41,12 @@ class Github::Import with MooseX::Getopt {
         required => 1,
     );
 
+    has remote => (
+        is      => "ro",
+        isa     => "Str",
+        default => "github",
+    );
+
     # internals
     has 'user_agent' => (
         traits   => ['NoGetopt'],
@@ -87,7 +93,7 @@ class Github::Import with MooseX::Getopt {
         }
 
         if($self->add_remote){
-            $self->msg('Adding remote "github" to existing working copy');
+            $self->msg(tt 'Adding remote "[% self.remote %]" to existing working copy');
             $self->do_add_remote;
             $self->msg('Remote added');
         };
@@ -145,18 +151,20 @@ class Github::Import with MooseX::Getopt {
     }
 
     method do_add_remote() {
+        my $remote = $self->remote;
         my $push = tt 'git@github.com:[% self.username %]/[% self.project_name %].git';
         $self->run_git(
-            "remote add github $push",
+            "remote add $remote $push",
             ignore_errors => 1,
             print_output  => 0,
         );
     }
 
     method do_push() {
+        my $remote = $self->remote;
         my $branch = 'master'; # FIXME: introspect and push everything
         $self->run_git(
-            "push github $branch",
+            "push $remote $branch",
             print_output => 1,
         );
     }
