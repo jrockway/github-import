@@ -127,7 +127,7 @@ class Github::Import with MooseX::Getopt {
         lazy    => 1,
         default => sub {
             my $self = shift;
-            tt lc 'git@github.com:[% self.username %]/[% self.project_name %].git';
+            tt 'git@github.com:[% self.username %]/[% self.project_name %].git';
         },
         documentation => "override the default github push uri",
     );
@@ -212,21 +212,22 @@ class Github::Import with MooseX::Getopt {
     my $CREATE_URI = URI->new('http://github.com/repositories/new');
     my $CREATE_SUBMIT_URI = URI->new('http://github.com/repositories');
     method do_create(){
-        return if $self->dry_run;
-        my $ua = $self->user_agent;
-        my $res = $ua->get($CREATE_URI);
-        $self->err('Error getting creation page: ' . $res->status_line) unless $res->is_success;
-        $res = $ua->request(
-            POST( $CREATE_SUBMIT_URI, [
-                'repository[name]'   => $self->project_name,
-                'repository[public]' => 'true',
-                'commit'             => 'Create repository',
-            ]),
-        );
+        unless ( $self->dry_run ) {
+			my $ua = $self->user_agent;
+			my $res = $ua->get($CREATE_URI);
+			$self->err('Error getting creation page: ' . $res->status_line) unless $res->is_success;
+			$res = $ua->request(
+				POST( $CREATE_SUBMIT_URI, [
+					'repository[name]'   => $self->project_name,
+					'repository[public]' => 'true',
+					'commit'             => 'Create repository',
+				]),
+			);
 
-        # XXX: not sure how to detect errors here, other than the obvious
-        $self->err('Error creating project') unless $res->is_success;
-        return lc tt 'http://github.com/[% self.username %]/[% self.project_name %]/tree/master';
+			# XXX: not sure how to detect errors here, other than the obvious
+			$self->err('Error creating project: ' . $res->status_line) unless $res->is_success;
+		}
+        return tt 'http://github.com/[% self.username %]/[% self.project_name %]/tree/master';
     };
 
     method run_git(Str $command, Bool :$ignore_errors, Bool :$print_output){
