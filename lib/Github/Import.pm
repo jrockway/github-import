@@ -11,58 +11,108 @@ class Github::Import with MooseX::Getopt {
     use namespace::clean -except => ['meta'];
 
     # command-line args
-    has [qw/username password/] => (
+    has username => (
+        traits  => [qw(Getopt)],
+        is      => 'ro',
+        isa     => 'Str',
+        default => sub { $ENV{USER} },
+        cmd_aliases => "u",
+        documentation => 'username for github.com (defaults to $ENV{USER})',
+    );
+
+    has password => (
+        traits   => [qw(Getopt)],
         is       => 'ro',
         isa      => 'Str',
         required => 1,
+        cmd_aliases => "p",
+        documentation => "password for github.com",
     );
 
-    has '+username' => ( default => sub { $ENV{USER} } );
-
     has dry_run => (
-        isa => "Bool",
-        is  => "ro",
+        traits      => [qw(Getopt)],
+        isa         => "Bool",
+        is          => "ro",
+        cmd_flag    => "dry-run",
+        cmd_aliases => "n",
+        documentation => "don't actually do anything",
     );
 
     has 'project' => (
+        traits   => [qw(Getopt)],
         is       => 'ro',
         isa      => Dir,
-        required => 1,
+        default  => ".",
         coerce   => 1,
+        documentation => "the directory of the repository (default is pwd)",
     );
 
-    has 'project-name' => (
-        reader   => 'project_name',
+    has project_name => (
+        traits   => [qw(Getopt)],
         isa      => 'Str',
-        required => 0,
         default  => sub {
             my $self = shift;
-            return Path::Class::File->new($self->project)->basename;
+            return Path::Class::File->new($self->project->absolute)->basename;
         },
+        cmd_flag => "project-name",
+        documentation => "the name of the project to create",
     );
 
-    has [qw/create add_remote push push_tags/] => (
-        is       => 'ro',
-        isa      => 'Bool',
-        default  => sub { 1 },
-        required => 1,
+    has create => (
+        traits  => [qw(Getopt)],
+        is      => 'ro',
+        isa     => 'Bool',
+        default => 1,
+        documentation => "create the repo on github.com (default is true)",
+        cmd_aliases => "c",
+    );
+
+    has push => (
+        traits  => [qw(Getopt)],
+        is      => 'ro',
+        isa     => 'Bool',
+        default => 1,
+        documentation => "run git push (default is true)",
+    );
+
+    has add_remote => (
+        traits   => [qw(Getopt)],
+        is       => "ro",
+        isa      => "Bool",
+        cmd_flag => "add-remote",
+        documentation => "add a remote for github to .git/config",
+    );
+
+    has push_tags => (
+        traits   => [qw(Getopt)],
+        is       => "ro",
+        isa      => "Bool",
+        cmd_flag => "tags",
+        documentation => "specify --tags to push (default is true)",
     );
 
     has push_all => (
-        is  => "ro",
-        isa => "Bool",
+        traits   => [qw(Getopt)],
+        is       => "ro",
+        isa      => "Bool",
+        cmd_flag => "all",
+        documentation => "specify --all to push (default is false)",
     );
 
     has remote => (
+        traits   => [qw(Getopt)],
         is      => "ro",
         isa     => "Str",
         default => "github",
+        documentation => "the remote to add to .git/config (default is 'github')",
     );
 
     has refspec => (
+        traits   => [qw(Getopt)],
         is      => "ro",
         isa     => "Str",
         default => "master",
+        documentation => "the refspec to specify to push (default is 'master')",
     );
 
     # internals
