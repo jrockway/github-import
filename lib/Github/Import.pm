@@ -17,6 +17,8 @@ class Github::Import with MooseX::Getopt {
         required => 1,
     );
 
+    has '+username' => ( default => sub { $ENV{USER} } );
+
     has 'project' => (
         is       => 'ro',
         isa      => Dir,
