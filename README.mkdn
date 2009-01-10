@@ -1,0 +1,15 @@
+# How do I use it?
+
+    % cd some_project_in_git
+    % github-import --username jrockway --password whatever --add-remote --push-mode all
+
+You can also create a config file. Here is an example using a real man's editor:
+
+    % cat > ~/.github-import
+    ---
+    username: jrockway
+    password: ilovehellokitty
+    remote:   origin # if you don't like "github"
+    ^D
+    % cd some_other_project_in_git
+    % github-import
