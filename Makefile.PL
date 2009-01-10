@@ -14,6 +14,8 @@ requires "Crypt::SSLeay"; # https
 requires "URI";
 requires "String::TT";
 requires "File::pushd";
+requires "YAML::Tiny";
+requires "File::HomeDir";
 
 install_script 'bin/github-import';
 WriteAll();
