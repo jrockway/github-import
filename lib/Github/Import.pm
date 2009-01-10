@@ -305,3 +305,121 @@ class Github::Import with MooseX::Getopt {
 };
 
 1;
+
+__END__
+
+=pod
+
+=head1 NAME
+
+Github::Import - Import your project into L<http://github.com>
+
+=head1 SYNOPSIS
+
+    % cd some_project_in_git
+    % github-import --username jrockway --password whatever --add-remote --push-mode all
+
+You can also create a config file. Here is an example using a real man's editor:
+
+    % cat > ~/.github-import
+    ---
+    username: jrockway
+    password: ilovehellokitty
+    remote:   origin # if you don't like "github"
+    ^D
+    % cd some_other_project_in_git
+    % github-import
+
+=head1 DESCRIPTION
+
+
+=head1 ATTRIBUTES
+
+=over 4
+
+=item dry_run
+
+If true nothing will actually be done, but the output will be printed.
+
+=item config_file
+
+Defaults to C<~/.github>.
+
+This is a YAML file containing values for attributes.
+
+=item username
+
+The username for github.com
+
+If none is provided or in the config file uses C<$ENV{USER}>.
+
+=item password
+
+The password for github.com
+
+=item remote
+
+The name of the remote to create if C<add_remote> is specified.
+
+Defaults to C<github>.
+
+=item project
+
+The directory to imoport.
+
+Defaults to the current directory.
+
+=item project_name
+
+The project name to use when creating on github.
+
+Defaults to the basename of C<project>.
+
+=item create
+
+If true a repository will be created on github.
+
+Defaults to true. Requires C<username> and C<password>.
+
+=item add_remote
+
+If true a remote will be added for the github repository.
+
+Defaults to true.
+
+=item push
+
+If true the repository will be pushed to github.
+
+Defaults to true.
+
+=item tags
+
+If true C<--tags> will be given to C<git push>.
+
+Defaults to true.
+
+=item refspec
+
+The refspec to push, given to C<git push>.
+
+Defaults to C<master>.
+
+If you want to push all your branches set to C<refs/heads/*:refs/heads/*>.
+
+=item push_mode
+
+One of C<all> or C<mirror>.
+
+If specified, C<git push --all> or C<git push --mirror> is run instead of
+pushing with a refspec.
+
+Overrides C<refspec> and C<tags>.
+
+=item push_uri
+
+Defaults to the SSH push URI for your github repository.
+
+=back
+
+=cut
