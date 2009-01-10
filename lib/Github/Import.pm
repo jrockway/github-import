@@ -1,35 +1,68 @@
 use MooseX::Declare;
 
 class Github::Import with MooseX::Getopt {
+	use File::HomeDir;
     use Moose::Util::TypeConstraints qw(enum);
-    use MooseX::Types::Path::Class 'Dir';
+    use MooseX::Types::Path::Class qw(Dir File);
     use LWP::UserAgent;
     use HTTP::Request::Common 'POST';
     use HTTP::Cookies;
     use URI;
     use String::TT 'tt';
     use File::pushd 'pushd';
+	use Path::Class;
+	use YAML::Tiny qw(LoadFile);
 
     use namespace::clean -except => 'meta';
 
+	# for the password
+	has config_file => (
+        traits  => [qw(Getopt)],
+		isa     => File,
+		is      => "ro",
+		default => sub { dir(File::HomeDir->my_home)->file(".github-import") },
+		documentation => "a YAML file for your username/password (default is ~/.github-import)",
+	);
+	
+	has config => (
+		traits     => [qw(NoGetopt)],
+		isa        => "HashRef",
+		is         => "ro",
+		lazy_build => 1,
+	);
+
+	sub _build_config {
+		my $self = shift;
+		
+		if ( -e ( my $file = $self->config_file ) ) {
+			return LoadFile($file);
+		} else {
+			return {};
+		}
+	}
+
     # command-line args
     has username => (
-        traits  => [qw(Getopt)],
-        is      => 'ro',
-        isa     => 'Str',
-        default => sub { $ENV{USER} },
+        traits      => [qw(Getopt)],
+        is          => 'ro',
+        isa         => 'Str',
+		lazy_build  => 1,
         cmd_aliases => "u",
         documentation => 'username for github.com (defaults to $ENV{USER})',
     );
 
+	sub _build_username { shift->config->{username} || $ENV{USER} }
+
     has password => (
-        traits   => [qw(Getopt)],
-        is       => 'ro',
-        isa      => 'Str',
-        required => 1,
+        traits      => [qw(Getopt)],
+        is          => 'ro',
+        isa         => 'Str',
+		lazy_build  => 1,
         cmd_aliases => "p",
         documentation => "password for github.com",
     );
+
+	sub _build_password { shift->config->{password} || die "'password' is required" }
 
     has dry_run => (
         traits      => [qw(Getopt)],
@@ -106,20 +139,24 @@ class Github::Import with MooseX::Getopt {
     );
 
     has remote => (
-        traits   => [qw(Getopt)],
-        is      => "ro",
-        isa     => "Str",
-        default => "github",
+        traits     => [qw(Getopt)],
+        is         => "ro",
+        isa        => "Str",
+		lazy_build => 1,
         documentation => "the remote to add to .git/config (default is 'github')",
     );
 
+	sub _build_remote { shift->config->{remote} || "github" }
+
     has refspec => (
-        traits   => [qw(Getopt)],
-        is      => "ro",
-        isa     => "Str",
-        default => "master",
+        traits     => [qw(Getopt)],
+        is         => "ro",
+        isa        => "Str",
+		lazy_build => 1,
         documentation => "the refspec to specify to push (default is 'master')",
     );
+
+	sub _build_refspec { shift->config->{refspec} || "master" }
 
     has push_uri => (
         isa     => "Str",
@@ -205,7 +242,7 @@ class Github::Import with MooseX::Getopt {
             ]),
         );
 
-        $self->err('Error logging in')
+        $self->err('Error logging in: ' . $res->status_line)
           if !$res->is_success || $res->content =~ /incorrect login/i;
     }
 
