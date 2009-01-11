@@ -16,6 +16,7 @@ requires "String::TT";
 requires "File::pushd";
 requires "YAML::Tiny";
 requires "File::HomeDir";
+requires "Test::use::ok";
 
 install_script 'bin/github-import';
 WriteAll();
