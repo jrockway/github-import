@@ -1,7 +1,6 @@
 use MooseX::Declare;
 
 class Github::Import with MooseX::Getopt {
-	use File::HomeDir;
     use Moose::Util::TypeConstraints qw(enum);
     use MooseX::Types::Path::Class qw(Dir File);
     use LWP::UserAgent;
@@ -11,16 +10,24 @@ class Github::Import with MooseX::Getopt {
     use String::TT 'tt';
     use File::pushd 'pushd';
 	use Path::Class;
-	use YAML::Tiny qw(LoadFile);
 
     use namespace::clean -except => 'meta';
+
+	has use_config_file => (
+		isa => "Bool",
+		is  => "ro",
+		default => 0,
+	);
 
 	# for the password
 	has config_file => (
         traits        => [qw(Getopt)],
 		isa           => File,
 		is            => "ro",
-		default       => sub { dir(File::HomeDir->my_home)->file(".github-import") },
+		default       => sub {
+			require File::HomeDir;
+			dir(File::HomeDir->my_home)->file(".github-import");
+		},
         cmd_flag      => "config-file",
 		cmd_aliases   => "f",
 		documentation => "a YAML file for your username/password (default is ~/.github-import)",
@@ -36,7 +43,8 @@ class Github::Import with MooseX::Getopt {
 	sub _build_config {
 		my $self = shift;
 		
-		if ( -e ( my $file = $self->config_file ) ) {
+		if ( $self->use_config_file and -e ( my $file = $self->config_file ) ) {
+			require YAML::Tiny;
 			return LoadFile($file);
 		} else {
 			return {};

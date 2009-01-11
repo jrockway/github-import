@@ -7,4 +7,4 @@ use lib "$Bin/../lib";
 
 use Github::Import;
 
-Github::Import->new_with_options->run;
+Github::Import->new_with_options( use_config_file => 1 )->run;
