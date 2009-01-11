@@ -14,6 +14,8 @@ class Github::Import with MooseX::Getopt {
 
     use namespace::clean -except => 'meta';
 
+    our $VERSION = "0.01";
+
     has use_config_file => (
         traits  => [qw(NoGetopt)],
         isa     => "Bool",
@@ -526,5 +528,19 @@ Run C<git push>.
 =head1 VERSION CONTROL
 
 L<http://github.com/jrockway/github-import>
+
+=head1 AUTHORS
+
+Jonathan Rockway
+
+Yuval Kogman
+
+=head1 LICENSE
+
+MIT
+
+=head1 COPYRIGHT
+
+    Copyright 2009 Jonathan Rockway, Yuval Kogman, ALl rights reserved
 
 =cut
