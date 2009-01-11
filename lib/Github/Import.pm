@@ -317,7 +317,7 @@ class Github::Import with MooseX::Getopt {
 
     method run_git(Str $command, Bool :$ignore_errors, Bool :$print_output){
         if ( $self->dry_run ) {
-            warn "/usr/bin/env git $command\n",
+            $self->msg("/usr/bin/env git $command");
         } else {
             my $dir = pushd $self->project;
             my $output = `/usr/bin/env git $command 2>&1`;
