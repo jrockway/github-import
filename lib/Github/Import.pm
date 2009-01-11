@@ -238,7 +238,7 @@ class Github::Import with MooseX::Getopt {
     }
 
     method err(Str $msg){
-        die $msg;
+        croak $msg;
     }
 
     method BUILD(HashRef $args){
@@ -289,8 +289,8 @@ class Github::Import with MooseX::Getopt {
             ]),
         );
 
-        $self->err('Error logging in: ' . $res->status_line)
-          if !$res->is_success || $res->content =~ /incorrect login/i;
+        $self->err('Error logging in: ' . $res->status_line) unless $res->is_success;
+        $self->err('Incorrect login') if $res->content =~ /incorrect login/i;
     }
 
     my $CREATE_URI = URI->new('http://github.com/repositories/new');
