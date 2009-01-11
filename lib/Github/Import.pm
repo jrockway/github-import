@@ -10,6 +10,7 @@ class Github::Import with MooseX::Getopt {
     use String::TT 'tt';
     use File::pushd 'pushd';
     use Path::Class;
+    use Carp qw(croak);
 
     use namespace::clean -except => 'meta';
 
@@ -43,10 +44,10 @@ class Github::Import with MooseX::Getopt {
 
     sub _build_config {
         my $self = shift;
-        
+
         if ( $self->use_config_file and -e ( my $file = $self->config_file ) ) {
             require YAML::Tiny;
-            return LoadFile($file);
+            return YAML::Tiny::LoadFile($file);
         } else {
             return {};
         }
@@ -85,7 +86,7 @@ class Github::Import with MooseX::Getopt {
         documentation => "password for github.com",
     );
 
-    sub _build_password { shift->_conf_var("password") || die "'password' is required" }
+    sub _build_password { shift->_conf_var("password") || croak "'password' is required" }
 
     has dry_run => (
         traits      => [qw(Getopt)],
@@ -272,7 +273,11 @@ class Github::Import with MooseX::Getopt {
     my $LOGIN_URI = URI->new('https://github.com/login');
     my $LOGIN_SUBMIT_URI = URI->new('https://github.com/session');
     method do_login() {
-        return if $self->dry_run;
+        if ( $self->dry_run ) {
+            $self->username;
+            $self->password;
+            return;
+        }
         my $ua = $self->user_agent;
         my $res = $ua->get($LOGIN_URI);
         $self->err('Error getting login page: ' . $res->status_line) unless $res->is_success;
@@ -337,7 +342,7 @@ class Github::Import with MooseX::Getopt {
 
         my @args = $self->has_push_mode
             ? ( "--" . $self->push_mode, $self->remote )
-            : ( $self->push_tags ? "--tags" : (), $self->remote, $self->refspec );
+            : ( $self->push_tags ? "--tags" : (), $remote, $self->refspec );
 
         $self->run_git(
             "push @args",
