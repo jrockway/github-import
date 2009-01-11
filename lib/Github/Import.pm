@@ -9,82 +9,82 @@ class Github::Import with MooseX::Getopt {
     use URI;
     use String::TT 'tt';
     use File::pushd 'pushd';
-	use Path::Class;
+    use Path::Class;
 
     use namespace::clean -except => 'meta';
 
-	has use_config_file => (
-		isa => "Bool",
-		is  => "ro",
-		default => 0,
-	);
+    has use_config_file => (
+        isa => "Bool",
+        is  => "ro",
+        default => 0,
+    );
 
-	# for the password
-	has config_file => (
+    # for the password
+    has config_file => (
         traits        => [qw(Getopt)],
-		isa           => File,
-		is            => "ro",
-		default       => sub {
-			require File::HomeDir;
-			dir(File::HomeDir->my_home)->file(".github-import");
-		},
+        isa           => File,
+        is            => "ro",
+        default       => sub {
+            require File::HomeDir;
+            dir(File::HomeDir->my_home)->file(".github-import");
+        },
         cmd_flag      => "config-file",
-		cmd_aliases   => "f",
-		documentation => "a YAML file for your username/password (default is ~/.github-import)",
-	);
-	
-	has config => (
-		traits     => [qw(NoGetopt)],
-		isa        => "HashRef",
-		is         => "ro",
-		lazy_build => 1,
-	);
+        cmd_aliases   => "f",
+        documentation => "a YAML file for your username/password (default is ~/.github-import)",
+    );
+    
+    has config => (
+        traits     => [qw(NoGetopt)],
+        isa        => "HashRef",
+        is         => "ro",
+        lazy_build => 1,
+    );
 
-	sub _build_config {
-		my $self = shift;
-		
-		if ( $self->use_config_file and -e ( my $file = $self->config_file ) ) {
-			require YAML::Tiny;
-			return LoadFile($file);
-		} else {
-			return {};
-		}
-	}
+    sub _build_config {
+        my $self = shift;
+        
+        if ( $self->use_config_file and -e ( my $file = $self->config_file ) ) {
+            require YAML::Tiny;
+            return LoadFile($file);
+        } else {
+            return {};
+        }
+    }
 
     # command-line args
     has username => (
         traits      => [qw(Getopt)],
         is          => 'ro',
         isa         => 'Str',
-		lazy_build  => 1,
+        lazy_build  => 1,
         cmd_aliases => "u",
         documentation => 'username for github.com (defaults to $ENV{USER})',
     );
 
-	sub _conf_var {
-		my ( $self, $var, $default ) = @_;
+    sub _conf_var {
+        my ( $self, $var, $default ) = @_;
 
-		my $config = $self->config;
+        my $config = $self->config;
 
-		if ( exists $config->{$var} ) {
-			return $config->{$var};
-		} else {
-			return $default;
-		}
-	}
+        if ( exists $config->{$var} ) {
+            return $config->{$var};
+        } else {
+            return $default;
+        }
+    }
 
-	sub _build_username { shift->_conf_var( username => $ENV{USER} ) }
+    sub _build_username { shift->_conf_var( username => $ENV{USER} ) }
 
     has password => (
         traits      => [qw(Getopt)],
         is          => 'ro',
         isa         => 'Str',
-		lazy_build  => 1,
+        lazy_build  => 1,
         cmd_aliases => "P",
         documentation => "password for github.com",
     );
 
-	sub _build_password { shift->_conf_var("password") || die "'password' is required" }
+    sub _build_password { shift->_conf_var("password") || die "'password' is required" }
 
     has dry_run => (
         traits      => [qw(Getopt)],
@@ -101,7 +101,7 @@ class Github::Import with MooseX::Getopt {
         isa           => Dir,
         default       => ".",
         coerce        => 1,
-		cmd_aliases   => "d",
+        cmd_aliases   => "d",
         documentation => "the directory of the repository (default is pwd)",
     );
 
@@ -114,7 +114,7 @@ class Github::Import with MooseX::Getopt {
             return lc Path::Class::File->new($self->project->absolute)->basename;
         },
         cmd_flag      => "project-name",
-		cmd_aliases   => "N",
+        cmd_aliases   => "N",
         documentation => "the name of the project to create",
     );
 
@@ -122,47 +122,47 @@ class Github::Import with MooseX::Getopt {
         traits        => [qw(Getopt)],
         is            => 'ro',
         isa           => 'Bool',
-		lazy_build    => 1,
+        lazy_build    => 1,
         cmd_aliases   => "c",
         documentation => "create the repo on github.com (default is true)",
     );
 
-	sub _build_create { shift->_conf_var( create => 1 ) }
+    sub _build_create { shift->_conf_var( create => 1 ) }
 
     has push => (
         traits        => [qw(Getopt)],
         is            => 'ro',
         isa           => 'Bool',
-		lazy_build    => 1,
-		cmd_aliases   => "p",
+        lazy_build    => 1,
+        cmd_aliases   => "p",
         documentation => "run git push (default is true)",
     );
 
-	sub _build_push { shift->_conf_var( push => 1 ) }
+    sub _build_push { shift->_conf_var( push => 1 ) }
 
     has add_remote => (
         traits        => [qw(Getopt)],
         is            => "ro",
         isa           => "Bool",
         cmd_flag      => "add-remote",
-		lazy_build    => 1,
-		cmd_aliases   => "a",
+        lazy_build    => 1,
+        cmd_aliases   => "a",
         documentation => "add a remote for github to .git/config (defaults to true)",
     );
 
-	sub _build_add_remote { shift->_conf_var( add_remote => 1 ) }
+    sub _build_add_remote { shift->_conf_var( add_remote => 1 ) }
 
     has push_tags => (
         traits        => [qw(Getopt)],
         is            => "ro",
         isa           => "Bool",
         cmd_flag      => "tags",
-		lazy_build    => 1,
-		cmd_aliases   => "t",
+        lazy_build    => 1,
+        cmd_aliases   => "t",
         documentation => "specify --tags to push (default is true)",
     );
 
-	sub _build_push_tags { shift->_conf_var( push_tags => 1 ) }
+    sub _build_push_tags { shift->_conf_var( push_tags => 1 ) }
 
     has push_mode => (
         traits        => [qw(Getopt)],
@@ -170,7 +170,7 @@ class Github::Import with MooseX::Getopt {
         isa           => enum([qw(all mirror)]),
         predicate     => "has_push_mode",
         cmd_flag      => "push-mode",
-		cmd_aliases   => "m",
+        cmd_aliases   => "m",
         documentation => "'all' or 'mirror', overrides other push options",
     );
 
@@ -178,26 +178,26 @@ class Github::Import with MooseX::Getopt {
         traits        => [qw(Getopt)],
         is            => "ro",
         isa           => "Str",
-		lazy_build    => 1,
-		cmd_aliases   => "r",
+        lazy_build    => 1,
+        cmd_aliases   => "r",
         documentation => "the remote to add to .git/config (default is 'github')",
     );
 
-	sub _build_remote { shift->_conf_var( remote => "github" ) }
+    sub _build_remote { shift->_conf_var( remote => "github" ) }
 
     has refspec => (
         traits        => [qw(Getopt)],
         is            => "ro",
         isa           => "Str",
-		lazy_build    => 1,
-		cmd_aliases   => "b",
+        lazy_build    => 1,
+        cmd_aliases   => "b",
         documentation => "the refspec to specify to push (default is 'master')",
     );
 
-	sub _build_refspec { shift->_conf_var( refspec => "master" ) }
+    sub _build_refspec { shift->_conf_var( refspec => "master" ) }
 
     has push_uri => (
-		traits        => [qw(Getopt)],
+        traits        => [qw(Getopt)],
         isa           => "Str",
         is            => "ro",
         lazy          => 1,
@@ -205,8 +205,8 @@ class Github::Import with MooseX::Getopt {
             my $self = shift;
             tt 'git@github.com:[% self.username %]/[% self.project_name %].git';
         },
-		cmd_flag      => "push-uri",
-		cmd_aliases   => "u",
+        cmd_flag      => "push-uri",
+        cmd_aliases   => "u",
         documentation => "override the default github push uri",
     );
 
@@ -291,20 +291,20 @@ class Github::Import with MooseX::Getopt {
     my $CREATE_SUBMIT_URI = URI->new('http://github.com/repositories');
     method do_create(){
         unless ( $self->dry_run ) {
-			my $ua = $self->user_agent;
-			my $res = $ua->get($CREATE_URI);
-			$self->err('Error getting creation page: ' . $res->status_line) unless $res->is_success;
-			$res = $ua->request(
-				POST( $CREATE_SUBMIT_URI, [
-					'repository[name]'   => $self->project_name,
-					'repository[public]' => 'true',
-					'commit'             => 'Create repository',
-				]),
-			);
+            my $ua = $self->user_agent;
+            my $res = $ua->get($CREATE_URI);
+            $self->err('Error getting creation page: ' . $res->status_line) unless $res->is_success;
+            $res = $ua->request(
+                POST( $CREATE_SUBMIT_URI, [
+                    'repository[name]'   => $self->project_name,
+                    'repository[public]' => 'true',
+                    'commit'             => 'Create repository',
+                ]),
+            );
 
-			# XXX: not sure how to detect errors here, other than the obvious
-			$self->err('Error creating project: ' . $res->status_line) unless $res->is_success;
-		}
+            # XXX: not sure how to detect errors here, other than the obvious
+            $self->err('Error creating project: ' . $res->status_line) unless $res->is_success;
+        }
         return tt 'http://github.com/[% self.username %]/[% self.project_name %]/tree/master';
     };
 
@@ -386,7 +386,7 @@ documentation will be used.
 
 For instance to not push to github, set:
 
-	push: 0
+    push: 0
 
 You can override on the command line by specifying C<--no-push> or C<--push>
 depending on what you have in the file and what is the default.
