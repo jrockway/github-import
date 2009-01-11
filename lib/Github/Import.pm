@@ -365,6 +365,23 @@ You can also create a config file. Here is an example using a real man's editor:
 
 =head1 DESCRIPTION
 
+This class/script provides a way to import a git repository into
+L<http://github.com>.
+
+=head1 CONFIGURATION
+
+The configuration file is a YAML file whose values are used as defaults for the
+attributes docuented below.
+
+If no value is specified in the config file, the default one in the
+documentation will be used.
+
+For instance to not push to github, set:
+
+	push: 0
+
+You can override on the command line by specifying C<--no-push> or C<--push>
+depending on what you have in the file and what is the default.
 
 =head1 ATTRIBUTES
 
@@ -376,9 +393,15 @@ If true nothing will actually be done, but the output will be printed.
 
 =item config_file
 
-Defaults to C<~/.github>.
+Defaults to C<~/.github-import>.
 
 This is a YAML file containing values for attributes.
+
+=item use_config_file
+
+Defaults to false.
+
+The C<github-import> command line tool sets this attribute.
 
 =item username
 
@@ -454,5 +477,39 @@ Overrides C<refspec> and C<tags>.
 Defaults to the SSH push URI for your github repository.
 
 =back
+
+=head1 METHODS
+
+=over 4
+
+=item new_with_options
+
+L<MooseX::Getopt>
+
+=item run
+
+Import the repository by running all steps
+
+=item do_login
+
+Login the L<LWP::UserAgent> instance to github.
+
+=item do_create
+
+Create the repository by submitting a form.
+
+=item do_add_remote
+
+Add a remote entry for github to C<.git/config>.
+
+=item do_push
+
+Run C<git push>.
+
+=back
+
+=head1 VERSION CONTROL
+
+L<http://github.com/jrockway/github-import>
 
 =cut
