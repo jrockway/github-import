@@ -15,8 +15,9 @@ class Github::Import with MooseX::Getopt {
     use namespace::clean -except => 'meta';
 
     has use_config_file => (
-        isa => "Bool",
-        is  => "ro",
+        traits  => [qw(NoGetopt)],
+        isa     => "Bool",
+        is      => "ro",
         default => 0,
     );
 
