@@ -24,6 +24,7 @@ class Github::Import with MooseX::Getopt {
         traits        => [qw(Getopt)],
         isa           => File,
         is            => "ro",
+        coerce        => 1,
         default       => sub {
             require File::HomeDir;
             dir(File::HomeDir->my_home)->file(".github-import");
