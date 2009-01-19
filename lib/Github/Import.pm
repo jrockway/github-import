@@ -3,13 +3,7 @@ use Moose;
 
 use Moose::Util::TypeConstraints qw(enum);
 use MooseX::Types::Path::Class qw(Dir File);
-use LWP::UserAgent;
-use HTTP::Request::Common 'POST';
-use URI;
-use File::pushd 'pushd';
-use Path::Class;
 use Carp qw(croak);
-use Git;
 
 use namespace::clean -except => 'meta';
 
@@ -68,6 +62,7 @@ has git_handle => (
 
 sub _build_git_handle {
     my $self = shift;
+    require Git;
     Git->repository( Directory => $self->project );
 }
 
@@ -132,14 +127,13 @@ has project_name => (
     traits        => [qw(Getopt)],
     is            => 'ro',
     isa           => 'Str',
-    default       => sub {
-        my $self = shift;
-        return lc Path::Class::File->new($self->project->absolute)->basename;
-    },
+    lazy_build    => 1,
     cmd_flag      => "project-name",
     cmd_aliases   => "N",
     documentation => "the name of the project to create",
 );
+
+sub _build_project_name { lc shift->project->absolute->dir_list(-1) }
 
 has create => (
     traits        => [qw(Getopt)],
@@ -252,6 +246,7 @@ has 'user_agent' => (
     is       => 'ro',
     isa      => 'LWP::UserAgent',
     default  => sub {
+        require LWP::UserAgent;
         LWP::UserAgent->new(
             requests_redirectable => [qw/GET POST/],
         );
@@ -309,13 +304,16 @@ sub run {
 sub do_create {
     my $self = shift;
 
+    require URI;
+    require HTTP::Request::Common;
+
     my $uri = URI->new('http://github.com/repositories');
 
     $uri->scheme("https") if $self->ssl;
 
     unless ( $self->dry_run ) {
         my $res = $self->user_agent->request(
-            POST( $uri, [
+            HTTP::Request::Common::POST( $uri, [
                 'repository[name]'   => $self->project_name,
                 'repository[public]' => 'true',
                 'commit'             => 'Create repository',

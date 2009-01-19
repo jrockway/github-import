@@ -10,7 +10,6 @@ requires "MooseX::Getopt";
 requires "MooseX::Types::Path::Class";
 requires "LWP::UserAgent";
 requires "URI";
-requires "File::pushd";
 requires "File::HomeDir";
 requires "Test::use::ok";
 requires "Test::Exception";
