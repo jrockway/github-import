@@ -14,7 +14,7 @@ class Github::Import with MooseX::Getopt {
 
     use namespace::clean -except => 'meta';
 
-    our $VERSION = "0.01";
+    our $VERSION = "0.02";
 
     has use_config_file => (
         traits  => [qw(NoGetopt)],
