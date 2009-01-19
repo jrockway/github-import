@@ -1,3 +1,8 @@
+0.04
+    - Remove superflous deps
+    - add --ssl flag
+    - add --description, --homepage
+
 0.03
     - PAUSE doesn't index without 'package ...;', a redundant declaration was
       added
