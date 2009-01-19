@@ -10,7 +10,6 @@ requires "MooseX::Declare";
 requires "MooseX::Getopt";
 requires "MooseX::Types::Path::Class";
 requires "LWP::UserAgent";
-requires "Crypt::SSLeay"; # https
 requires "URI";
 requires "File::pushd";
 requires "File::HomeDir";
