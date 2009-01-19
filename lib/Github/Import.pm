@@ -135,6 +135,24 @@ has project_name => (
 
 sub _build_project_name { lc shift->project->absolute->dir_list(-1) }
 
+has description => (
+    traits        => [qw(Getopt)],
+    is            => 'ro',
+    isa           => 'Str',
+    predicate     => "has_description",
+    cmd_aliases   => "D",
+    documentation => "Project description",
+);
+
+has homepage => (
+    traits        => [qw(Getopt)],
+    is            => 'ro',
+    isa           => 'Str',
+    predicate     => "has_homepage",
+    cmd_aliases   => "H",
+    documentation => "Project homepage",
+);
+
 has create => (
     traits        => [qw(Getopt)],
     is            => 'ro',
@@ -314,11 +332,13 @@ sub do_create {
     unless ( $self->dry_run ) {
         my $res = $self->user_agent->request(
             HTTP::Request::Common::POST( $uri, [
-                'repository[name]'   => $self->project_name,
-                'repository[public]' => 'true',
                 'commit'             => 'Create repository',
                 'login'              => $self->username,
                 'token'              => $self->token,
+                'repository[name]'   => $self->project_name,
+                'repository[public]' => 'true',
+                $self->has_description ? ( 'repository[description]' => $self->description ) : (),
+                $self->has_homepage    ? ( 'repository[homepage]'    => $self->homepage    ) : (),
             ]),
         );
 
