@@ -33,6 +33,7 @@ class Github::Import with MooseX::Getopt {
         cmd_flag      => "config-file",
         cmd_aliases   => "f",
         documentation => "Use an alternate config file",
+        predicate     => "has_config_file",
     );
 
     sub _git_conf {
