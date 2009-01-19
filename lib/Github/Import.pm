@@ -1,354 +1,375 @@
-use MooseX::Declare;
+package Github::Import;
+use Moose;
 
-class Github::Import with MooseX::Getopt {
-    # for the PAUSE indexer
-    package Github::Import;
-    use Moose::Util::TypeConstraints qw(enum);
-    use MooseX::Types::Path::Class qw(Dir File);
-    use LWP::UserAgent;
-    use HTTP::Request::Common 'POST';
-    use URI;
-    use File::pushd 'pushd';
-    use Path::Class;
-    use Carp qw(croak);
-    use Git;
+use Moose::Util::TypeConstraints qw(enum);
+use MooseX::Types::Path::Class qw(Dir File);
+use LWP::UserAgent;
+use HTTP::Request::Common 'POST';
+use URI;
+use File::pushd 'pushd';
+use Path::Class;
+use Carp qw(croak);
+use Git;
 
-    use namespace::clean -except => 'meta';
+use namespace::clean -except => 'meta';
 
-    our $VERSION = "0.03";
+with qw(MooseX::Getopt);
 
-    has use_config_file => (
-        traits  => [qw(NoGetopt)],
-        isa     => "Bool",
-        is      => "ro",
-        default => 0,
-    );
+our $VERSION = "0.03";
 
-    has config_file => (
-        traits        => [qw(Getopt)],
-        isa           => File,
-        is            => "ro",
-        coerce        => 1,
-        cmd_flag      => "config-file",
-        cmd_aliases   => "f",
-        documentation => "Use an alternate config file",
-        predicate     => "has_config_file",
-    );
+has use_config_file => (
+    traits  => [qw(NoGetopt)],
+    isa     => "Bool",
+    is      => "ro",
+    default => 0,
+);
 
-    sub _git_conf {
-        my ( $self, $method, $var, $default ) = @_;
+has config_file => (
+    traits        => [qw(Getopt)],
+    isa           => File,
+    is            => "ro",
+    coerce        => 1,
+    cmd_flag      => "config-file",
+    cmd_aliases   => "f",
+    documentation => "Use an alternate config file",
+    predicate     => "has_config_file",
+);
 
-        return $default unless $self->use_config_file;
+sub _git_conf {
+    my ( $self, $method, $var, $default ) = @_;
 
-        local $ENV{GIT_CONFIG} = $self->config_file->stringify if $self->has_config_file;
+    return $default unless $self->use_config_file;
 
-        if ( defined( my $value = $self->git_handle->$method($var) ) ) {
-            return $value;
-        } else {
-            return $default;
-        }
+    local $ENV{GIT_CONFIG} = $self->config_file->stringify if $self->has_config_file;
+
+    if ( defined( my $value = $self->git_handle->$method($var) ) ) {
+        return $value;
+    } else {
+        return $default;
     }
+}
 
-    sub _conf_var {
-        my ( $self, @args ) = @_;
-        $self->_git_conf( config => @args );
-    }
+sub _conf_var {
+    my ( $self, @args ) = @_;
+    $self->_git_conf( config => @args );
+}
 
-    sub _conf_bool {
-        my ( $self, @args ) = @_;
-        $self->_git_conf( config_bool => @args );
-    }
+sub _conf_bool {
+    my ( $self, @args ) = @_;
+    $self->_git_conf( config_bool => @args );
+}
 
-    has git_handle => (
-        traits => [qw(NoGetopt)],
-        isa => "Git",
-        is  => "ro",
-        lazy_build => 1,
-    );
+has git_handle => (
+    traits => [qw(NoGetopt)],
+    isa => "Git",
+    is  => "ro",
+    lazy_build => 1,
+);
 
-    sub _build_git_handle {
+sub _build_git_handle {
+    my $self = shift;
+    Git->repository( Directory => $self->project );
+}
+
+# command-line args
+has username => (
+    traits      => [qw(Getopt)],
+    is          => 'ro',
+    isa         => 'Str',
+    lazy_build  => 1,
+    cmd_aliases => "u",
+    documentation => 'username for github.com (defaults to $ENV{USER})',
+);
+
+sub _build_username {
+    my $self = shift;
+    $self->_conf_var( 'github-import.user' ) || $self->_conf_var( 'github.user' => $ENV{USER} );
+}
+
+has token => (
+    traits      => [qw(Getopt)],
+    is          => 'ro',
+    isa         => 'Str',
+    lazy_build  => 1,
+    cmd_aliases => "P",
+    documentation => "api token for github.com",
+);
+
+sub _build_token {
+    my $self = shift;
+    $self->_conf_var('github-import.token') || $self->_conf_var('github.token') || croak "'token' is required";
+}
+
+has dry_run => (
+    traits      => [qw(Getopt)],
+    isa         => "Bool",
+    is          => "ro",
+    cmd_flag    => "dry-run",
+    cmd_aliases => "n",
+    documentation => "don't actually do anything",
+);
+
+has 'project' => (
+    traits        => [qw(Getopt)],
+    is            => 'ro',
+    isa           => Dir,
+    default       => ".",
+    coerce        => 1,
+    cmd_aliases   => "d",
+    documentation => "the directory of the repository (default is pwd)",
+);
+
+has project_name => (
+    traits        => [qw(Getopt)],
+    is            => 'ro',
+    isa           => 'Str',
+    default       => sub {
         my $self = shift;
-        Git->repository( Directory => $self->project );
-    }
+        return lc Path::Class::File->new($self->project->absolute)->basename;
+    },
+    cmd_flag      => "project-name",
+    cmd_aliases   => "N",
+    documentation => "the name of the project to create",
+);
 
-    # command-line args
-    has username => (
-        traits      => [qw(Getopt)],
-        is          => 'ro',
-        isa         => 'Str',
-        lazy_build  => 1,
-        cmd_aliases => "u",
-        documentation => 'username for github.com (defaults to $ENV{USER})',
-    );
+has create => (
+    traits        => [qw(Getopt)],
+    is            => 'ro',
+    isa           => 'Bool',
+    lazy_build    => 1,
+    cmd_aliases   => "c",
+    documentation => "create the repo on github.com (default is true)",
+);
 
-    sub _build_username {
-        my $self = shift;
-        $self->_conf_var( 'github-import.user' ) || $self->_conf_var( 'github.user' => $ENV{USER} );
-    }
+sub _build_create { shift->_conf_bool( 'github-import.create' => 1 ) }
 
-    has token => (
-        traits      => [qw(Getopt)],
-        is          => 'ro',
-        isa         => 'Str',
-        lazy_build  => 1,
-        cmd_aliases => "P",
-        documentation => "api token for github.com",
-    );
+has push => (
+    traits        => [qw(Getopt)],
+    is            => 'ro',
+    isa           => 'Bool',
+    lazy_build    => 1,
+    cmd_aliases   => "p",
+    documentation => "run git push (default is true)",
+);
 
-    sub _build_token {
-        my $self = shift;
-        $self->_conf_var('github-import.token') || $self->_conf_var('github.token') || croak "'token' is required";
-    }
+sub _build_push { shift->_conf_bool( 'github-import.push' => 1 ) }
 
-    has dry_run => (
-        traits      => [qw(Getopt)],
-        isa         => "Bool",
-        is          => "ro",
-        cmd_flag    => "dry-run",
-        cmd_aliases => "n",
-        documentation => "don't actually do anything",
-    );
+has add_remote => (
+    traits        => [qw(Getopt)],
+    is            => "ro",
+    isa           => "Bool",
+    cmd_flag      => "add-remote",
+    lazy_build    => 1,
+    cmd_aliases   => "a",
+    documentation => "add a remote for github to .git/config (defaults to true)",
+);
 
-    has 'project' => (
-        traits        => [qw(Getopt)],
-        is            => 'ro',
-        isa           => Dir,
-        default       => ".",
-        coerce        => 1,
-        cmd_aliases   => "d",
-        documentation => "the directory of the repository (default is pwd)",
-    );
+sub _build_add_remote { shift->_conf_bool( 'github-import.add_remote' => 1 ) }
 
-    has project_name => (
-        traits        => [qw(Getopt)],
-        is            => 'ro',
-        isa           => 'Str',
-        default       => sub {
-            my $self = shift;
-            return lc Path::Class::File->new($self->project->absolute)->basename;
-        },
-        cmd_flag      => "project-name",
-        cmd_aliases   => "N",
-        documentation => "the name of the project to create",
-    );
+has push_tags => (
+    traits        => [qw(Getopt)],
+    is            => "ro",
+    isa           => "Bool",
+    cmd_flag      => "tags",
+    lazy_build    => 1,
+    cmd_aliases   => "t",
+    documentation => "specify --tags to push (default is true)",
+);
 
-    has create => (
-        traits        => [qw(Getopt)],
-        is            => 'ro',
-        isa           => 'Bool',
-        lazy_build    => 1,
-        cmd_aliases   => "c",
-        documentation => "create the repo on github.com (default is true)",
-    );
+sub _build_push_tags { shift->_conf_bool( 'github-import.push_tags' => 1 ) }
 
-    sub _build_create { shift->_conf_bool( 'github-import.create' => 1 ) }
+has push_mode => (
+    traits        => [qw(Getopt)],
+    is            => "ro",
+    isa           => enum([qw(all mirror)]),
+    predicate     => "has_push_mode",
+    cmd_flag      => "push-mode",
+    cmd_aliases   => "m",
+    documentation => "'all' or 'mirror', overrides other push options",
+);
 
-    has push => (
-        traits        => [qw(Getopt)],
-        is            => 'ro',
-        isa           => 'Bool',
-        lazy_build    => 1,
-        cmd_aliases   => "p",
-        documentation => "run git push (default is true)",
-    );
+has remote => (
+    traits        => [qw(Getopt)],
+    is            => "ro",
+    isa           => "Str",
+    lazy_build    => 1,
+    cmd_aliases   => "r",
+    documentation => "the remote to add to .git/config (default is 'github')",
+);
 
-    sub _build_push { shift->_conf_bool( 'github-import.push' => 1 ) }
+sub _build_remote { shift->_conf_var( 'github-import.remote' => "github" ) }
 
-    has add_remote => (
-        traits        => [qw(Getopt)],
-        is            => "ro",
-        isa           => "Bool",
-        cmd_flag      => "add-remote",
-        lazy_build    => 1,
-        cmd_aliases   => "a",
-        documentation => "add a remote for github to .git/config (defaults to true)",
-    );
+has refspec => (
+    traits        => [qw(Getopt)],
+    is            => "ro",
+    isa           => "Str",
+    lazy_build    => 1,
+    cmd_aliases   => "b",
+    documentation => "the refspec to specify to push (default is 'master')",
+);
 
-    sub _build_add_remote { shift->_conf_bool( 'github-import.add_remote' => 1 ) }
+sub _build_refspec { shift->_conf_var( 'github-import.refspec' => "master" ) }
 
-    has push_tags => (
-        traits        => [qw(Getopt)],
-        is            => "ro",
-        isa           => "Bool",
-        cmd_flag      => "tags",
-        lazy_build    => 1,
-        cmd_aliases   => "t",
-        documentation => "specify --tags to push (default is true)",
-    );
+has github_path => (
+    traits     => [qw(NoGetopt)],
+    isa        => "Str",
+    is         => "ro",
+    lazy_build => 1,
+);
 
-    sub _build_push_tags { shift->_conf_bool( 'github-import.push_tags' => 1 ) }
+sub _build_github_path {
+    my $self = shift;
+    sprintf "%s/%s", $self->username, $self->project_name;
+}
 
-    has push_mode => (
-        traits        => [qw(Getopt)],
-        is            => "ro",
-        isa           => enum([qw(all mirror)]),
-        predicate     => "has_push_mode",
-        cmd_flag      => "push-mode",
-        cmd_aliases   => "m",
-        documentation => "'all' or 'mirror', overrides other push options",
-    );
+has push_uri => (
+    traits        => [qw(Getopt)],
+    isa           => "Str",
+    is            => "ro",
+    lazy_build    => 1,
+    cmd_flag      => "push-uri",
+    cmd_aliases   => "u",
+    documentation => "override the default github push uri",
+);
 
-    has remote => (
-        traits        => [qw(Getopt)],
-        is            => "ro",
-        isa           => "Str",
-        lazy_build    => 1,
-        cmd_aliases   => "r",
-        documentation => "the remote to add to .git/config (default is 'github')",
-    );
+sub _build_push_uri {
+    my $self = shift;
+    sprintf 'git@github.com:' . $self->github_path . '.git';
+}
 
-    sub _build_remote { shift->_conf_var( 'github-import.remote' => "github" ) }
-
-    has refspec => (
-        traits        => [qw(Getopt)],
-        is            => "ro",
-        isa           => "Str",
-        lazy_build    => 1,
-        cmd_aliases   => "b",
-        documentation => "the refspec to specify to push (default is 'master')",
-    );
-
-    sub _build_refspec { shift->_conf_var( 'github-import.refspec' => "master" ) }
-
-    has github_path => (
-        traits     => [qw(NoGetopt)],
-        isa        => "Str",
-        is         => "ro",
-        lazy_build => 1,
-    );
-
-    sub _build_github_path {
-        my $self = shift;
-        sprintf "%s/%s", $self->username, $self->project_name;
-    }
-
-    has push_uri => (
-        traits        => [qw(Getopt)],
-        isa           => "Str",
-        is            => "ro",
-        lazy_build    => 1,
-        cmd_flag      => "push-uri",
-        cmd_aliases   => "u",
-        documentation => "override the default github push uri",
-    );
-
-    sub _build_push_uri {
-        my $self = shift;
-        sprintf 'git@github.com:' . $self->github_path . '.git';
-    }
-
-    # internals
-    has 'user_agent' => (
-        traits   => ['NoGetopt'],
-        is       => 'ro',
-        isa      => 'LWP::UserAgent',
-        default  => sub { LWP::UserAgent->new( requests_redirectable => [qw/GET POST/] ) }
-    );
-
-    has 'logger' => (
-        traits  => ['NoGetopt'],
-        is      => 'ro',
-        isa     => 'CodeRef',
-        default => sub {
-            sub { print {*STDERR} @_, "\n" },
-        },
-    );
-
-    method msg(Str $msg){
-        $self->logger->($msg);
-    }
-
-    method err(Str $msg){
-        croak $msg;
-    }
-
-    method BUILD(HashRef $args){
-        my $p = $self->project;
-        confess "project '$p' does not exist" unless -d $p;
-    }
-
-    method run(){
-        if($self->create){
-            $self->msg('Adding project to github');
-            my $url = $self->do_create;
-            $self->msg('Project added OK: '. $url);
-        }
-
-        if($self->add_remote){
-            $self->msg(sprintf 'Adding remote "%s" to existing working copy', $self->remote);
-            $self->do_add_remote;
-            $self->msg('Remote added');
-        };
-
-        if($self->push){
-            $self->msg('Pushing existing master to github');
-            $self->do_push;
-            $self->msg('Pushed OK');
-        }
-    };
-
-    #my $CREATE_URI = URI->new('http://github.com/repositories/new');
-    my $CREATE_SUBMIT_URI = URI->new('http://github.com/repositories');
-    method do_create(){
-        unless ( $self->dry_run ) {
-            my $res = $self->user_agent->request(
-                POST( $CREATE_SUBMIT_URI, [
-                    'repository[name]'   => $self->project_name,
-                    'repository[public]' => 'true',
-                    'commit'             => 'Create repository',
-                    'login'              => $self->username,
-                    'token'              => $self->token,
-                ]),
-            );
-
-            # XXX: not sure how to detect errors here, other than the obvious
-            $self->err('Error creating project: ' . $res->status_line) unless $res->is_success;
-        }
-        return 'http://github.com/' . $self->github_path;
-    };
-
-    method run_git(ArrayRef $command, Bool :$ignore_errors, Bool :$print_output){
-        if ( $self->dry_run ) {
-            $self->msg("git @$command");
-        } else {
-            my $method = $print_output ? "command_noisy" : "command";
-            $self->git_handle->$method(@$command);
-        }
-    }
-
-    method do_add_remote() {
-        my $remote = $self->remote;
-        my $push   = $self->push_uri;
-
-        if ( defined( my $url = $self->_conf_var("remote.${remote}.url") ) ) {
-            if ( $url ne $push ) {
-                $self->err("remote $remote is already configured as $url");
-            } else {
-                $self->msg("remote $remote already added");
-            }
-        } else {
-            $self->run_git(
-                [qw(remote add), $remote, $push],
-                ignore_errors => 1,
-                print_output  => 0,
-            );
-        }
-    }
-
-    method do_push() {
-        my $remote = $self->add_remote ? $self->remote : $self->push_uri;
-        my $refspec = $self->refspec;
-
-        my @args = $self->has_push_mode
-            ? ( "--" . $self->push_mode, $self->remote )
-            : ( $self->push_tags ? "--tags" : (), $remote, $self->refspec );
-
-        $self->run_git(
-            [ push => @args ],
-            print_output => 1,
+# internals
+has 'user_agent' => (
+    traits   => ['NoGetopt'],
+    is       => 'ro',
+    isa      => 'LWP::UserAgent',
+    default  => sub {
+        LWP::UserAgent->new(
+            requests_redirectable => [qw/GET POST/],
         );
     }
+);
+
+has 'logger' => (
+    traits  => ['NoGetopt'],
+    is      => 'ro',
+    isa     => 'CodeRef',
+    default => sub {
+        sub { print {*STDERR} @_, "\n" },
+    },
+);
+
+sub msg {
+    my ( $self, $msg ) = @_;
+    $self->logger->($msg);
+}
+
+sub err {
+    my ( $self, $msg ) = @_;
+    croak $msg;
+}
+
+sub BUILD {
+    my $self = shift;
+
+    my $p = $self->project;
+    confess "project '$p' does not exist" unless -d $p;
+}
+
+sub run {
+    my $self = shift;
+
+    if($self->create){
+        $self->msg('Adding project to github');
+        my $url = $self->do_create;
+        $self->msg('Project added OK: '. $url);
+    }
+
+    if($self->add_remote){
+        $self->msg(sprintf 'Adding remote "%s" to existing working copy', $self->remote);
+        $self->do_add_remote;
+        $self->msg('Remote added');
+    };
+
+    if($self->push){
+        $self->msg('Pushing existing master to github');
+        $self->do_push;
+        $self->msg('Pushed OK');
+    }
 };
+
+#my $CREATE_URI = URI->new('http://github.com/repositories/new');
+my $CREATE_SUBMIT_URI = URI->new('https://github.com/repositories');
+
+sub do_create {
+    my $self = shift;
+    unless ( $self->dry_run ) {
+        my $res = $self->user_agent->request(
+            POST( $CREATE_SUBMIT_URI, [
+                'repository[name]'   => $self->project_name,
+                'repository[public]' => 'true',
+                'commit'             => 'Create repository',
+                'login'              => $self->username,
+                'token'              => $self->token,
+            ]),
+        );
+
+        # XXX: not sure how to detect errors here, other than the obvious
+        $self->err('Error creating project: ' . $res->status_line) unless $res->is_success;
+    }
+    return 'http://github.com/' . $self->github_path;
+};
+
+sub run_git {
+    my ( $self, @args ) = @_;
+
+    unshift @args, "command" if @args % 2;
+
+    my %args = @args;
+
+    my ( $command, $print_output ) = @args{qw(command print_output)};
+
+    if ( $self->dry_run ) {
+        $self->msg("git @$command");
+    } else {
+        my $method = $print_output ? "command_noisy" : "command";
+        $self->git_handle->$method(@$command);
+    }
+}
+
+sub do_add_remote {
+    my $self = shift;
+
+    my $remote = $self->remote;
+    my $push   = $self->push_uri;
+
+    if ( defined( my $url = $self->_conf_var("remote.${remote}.url") ) ) {
+        if ( $url ne $push ) {
+            $self->err("remote $remote is already configured as $url");
+        } else {
+            $self->msg("remote $remote already added");
+        }
+    } else {
+        $self->run_git(
+            [qw(remote add), $remote, $push],
+        );
+    }
+}
+
+sub do_push {
+    my $self = shift;
+
+    my $remote = $self->add_remote ? $self->remote : $self->push_uri;
+    my $refspec = $self->refspec;
+
+    my @args = $self->has_push_mode
+        ? ( "--" . $self->push_mode, $self->remote )
+        : ( $self->push_tags ? "--tags" : (), $remote, $self->refspec );
+
+    $self->run_git(
+        [ push => @args ],
+        print_output => 1,
+    );
+}
 
 1;
 
