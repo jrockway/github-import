@@ -9,7 +9,7 @@ use namespace::clean -except => 'meta';
 
 with qw(MooseX::Getopt);
 
-our $VERSION = "0.03";
+our $VERSION = "0.04";
 
 has use_config_file => (
     traits  => [qw(NoGetopt)],
