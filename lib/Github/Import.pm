@@ -10,6 +10,7 @@ class Github::Import with MooseX::Getopt {
     use File::pushd 'pushd';
     use Path::Class;
     use Carp qw(croak);
+    use File::HomeDir;
     use Git;
 
     use namespace::clean -except => 'meta';
@@ -23,10 +24,28 @@ class Github::Import with MooseX::Getopt {
         default => 0,
     );
 
+    has config_file => (
+        traits        => [qw(Getopt)],
+        isa           => File,
+        is            => "ro",
+        coerce        => 1,
+        lazy_build    => 1,
+        cmd_flag      => "config-file",
+        cmd_aliases   => "f",
+        documentation => "Use an alternate config file",
+    );
+
+    sub _build_config_file {
+        dir(File::HomeDir->my_home)->file(".github-import");
+    }
+
     sub _git_conf {
         my ( $self, $method, $var, $default ) = @_;
 
         return $default unless $self->use_config_file;
+
+        local $ENV{GIT_CONFIG_LOCAL} = $self->config_file->stringify
+            if $self->has_config_file or not exists $ENV{GIT_CONFIG_LOCAL};
 
         if ( defined( my $value = $self->git_handle->$method($var) ) ) {
             return $value;
@@ -373,6 +392,14 @@ which are taken from C<github.user> and C<github.token>.
 If true nothing will actually be done, but the output will be printed.
 
 This is a YAML file containing values for attributes.
+
+=item config_file
+
+Sets C<GIT_CONFIG_LOCAL> to override the configuration file.
+
+Will only override an existing C<GIT_CONFIG_LOCAL> if explicitly set.
+
+Defaults to C<~/github-import>
 
 =item use_config_file
 
