@@ -5,7 +5,7 @@ use inc::Module::Install 0.77;
 name 'Github-Import';
 all_from 'lib/Github/Import.pm';
 
-requires "Moose";
+requires "Moose" => "0.64";
 requires "MooseX::Declare";
 requires "MooseX::Getopt";
 requires "MooseX::Types::Path::Class";
