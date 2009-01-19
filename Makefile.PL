@@ -1,6 +1,6 @@
 use strict;
 use warnings;
-use inc::Module::Install;
+use inc::Module::Install 0.77;
 
 name 'Github-Import';
 all_from 'lib/Github/Import.pm';
