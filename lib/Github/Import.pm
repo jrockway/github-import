@@ -100,6 +100,15 @@ sub _build_token {
     $self->_conf_var('github-import.token') || $self->_conf_var('github.token') || croak "'token' is required";
 }
 
+has ssl => (
+    traits        => [qw(Getopt)],
+    is            => 'ro',
+    isa           => 'Bool',
+    default       => 0,
+    documentation => "use https instead of http",
+    cmd_aliases   => "S",
+);
+
 has dry_run => (
     traits      => [qw(Getopt)],
     isa         => "Bool",
@@ -297,14 +306,16 @@ sub run {
     }
 };
 
-#my $CREATE_URI = URI->new('http://github.com/repositories/new');
-my $CREATE_SUBMIT_URI = URI->new('https://github.com/repositories');
-
 sub do_create {
     my $self = shift;
+
+    my $uri = URI->new('http://github.com/repositories');
+
+    $uri->scheme("https") if $self->ssl;
+
     unless ( $self->dry_run ) {
         my $res = $self->user_agent->request(
-            POST( $CREATE_SUBMIT_URI, [
+            POST( $uri, [
                 'repository[name]'   => $self->project_name,
                 'repository[public]' => 'true',
                 'commit'             => 'Create repository',
