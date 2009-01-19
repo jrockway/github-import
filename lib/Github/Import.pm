@@ -5,12 +5,12 @@ class Github::Import with MooseX::Getopt {
     use MooseX::Types::Path::Class qw(Dir File);
     use LWP::UserAgent;
     use HTTP::Request::Common 'POST';
-    use HTTP::Cookies;
     use URI;
     use String::TT 'tt';
     use File::pushd 'pushd';
     use Path::Class;
     use Carp qw(croak);
+    use Git;
 
     use namespace::clean -except => 'meta';
 
@@ -23,37 +23,38 @@ class Github::Import with MooseX::Getopt {
         default => 0,
     );
 
-    # for the password
-    has config_file => (
-        traits        => [qw(Getopt)],
-        isa           => File,
-        is            => "ro",
-        coerce        => 1,
-        default       => sub {
-            require File::HomeDir;
-            dir(File::HomeDir->my_home)->file(".github-import");
-        },
-        cmd_flag      => "config-file",
-        cmd_aliases   => "f",
-        documentation => "a YAML file for your username/password (default is ~/.github-import)",
-    );
-    
-    has config => (
-        traits     => [qw(NoGetopt)],
-        isa        => "HashRef",
-        is         => "ro",
+    sub _git_conf {
+        my ( $self, $method, $var, $default ) = @_;
+
+        return $default unless $self->use_config_file;
+
+        if ( defined( my $value = $self->git_handle->$method($var) ) ) {
+            return $value;
+        } else {
+            return $default;
+        }
+    }
+
+    sub _conf_var {
+        my ( $self, @args ) = @_;
+        $self->_git_conf( config => @args );
+    }
+
+    sub _conf_bool {
+        my ( $self, @args ) = @_;
+        $self->_git_conf( config_bool => @args );
+    }
+
+    has git_handle => (
+        traits => [qw(NoGetopt)],
+        isa => "Git",
+        is  => "ro",
         lazy_build => 1,
     );
 
-    sub _build_config {
+    sub _build_git_handle {
         my $self = shift;
-
-        if ( $self->use_config_file and -e ( my $file = $self->config_file ) ) {
-            require YAML::Tiny;
-            return YAML::Tiny::LoadFile($file);
-        } else {
-            return {};
-        }
+        Git->repository( Directory => $self->project );
     }
 
     # command-line args
@@ -66,30 +67,18 @@ class Github::Import with MooseX::Getopt {
         documentation => 'username for github.com (defaults to $ENV{USER})',
     );
 
-    sub _conf_var {
-        my ( $self, $var, $default ) = @_;
+    sub _build_username { shift->_conf_var( 'github.user' => $ENV{USER} ) }
 
-        my $config = $self->config;
-
-        if ( exists $config->{$var} ) {
-            return $config->{$var};
-        } else {
-            return $default;
-        }
-    }
-
-    sub _build_username { shift->_conf_var( username => $ENV{USER} ) }
-
-    has password => (
+    has token => (
         traits      => [qw(Getopt)],
         is          => 'ro',
         isa         => 'Str',
         lazy_build  => 1,
         cmd_aliases => "P",
-        documentation => "password for github.com",
+        documentation => "api token for github.com",
     );
 
-    sub _build_password { shift->_conf_var("password") || croak "'password' is required" }
+    sub _build_token { shift->_conf_var('github.token') || croak "'token' is required" }
 
     has dry_run => (
         traits      => [qw(Getopt)],
@@ -132,7 +121,7 @@ class Github::Import with MooseX::Getopt {
         documentation => "create the repo on github.com (default is true)",
     );
 
-    sub _build_create { shift->_conf_var( create => 1 ) }
+    sub _build_create { shift->_conf_bool( 'github-import.create' => 1 ) }
 
     has push => (
         traits        => [qw(Getopt)],
@@ -143,7 +132,7 @@ class Github::Import with MooseX::Getopt {
         documentation => "run git push (default is true)",
     );
 
-    sub _build_push { shift->_conf_var( push => 1 ) }
+    sub _build_push { shift->_conf_bool( 'github-import.push' => 1 ) }
 
     has add_remote => (
         traits        => [qw(Getopt)],
@@ -155,7 +144,7 @@ class Github::Import with MooseX::Getopt {
         documentation => "add a remote for github to .git/config (defaults to true)",
     );
 
-    sub _build_add_remote { shift->_conf_var( add_remote => 1 ) }
+    sub _build_add_remote { shift->_conf_bool( 'github-import.add_remote' => 1 ) }
 
     has push_tags => (
         traits        => [qw(Getopt)],
@@ -167,7 +156,7 @@ class Github::Import with MooseX::Getopt {
         documentation => "specify --tags to push (default is true)",
     );
 
-    sub _build_push_tags { shift->_conf_var( push_tags => 1 ) }
+    sub _build_push_tags { shift->_conf_bool( 'github-import.push_tags' => 1 ) }
 
     has push_mode => (
         traits        => [qw(Getopt)],
@@ -188,7 +177,7 @@ class Github::Import with MooseX::Getopt {
         documentation => "the remote to add to .git/config (default is 'github')",
     );
 
-    sub _build_remote { shift->_conf_var( remote => "github" ) }
+    sub _build_remote { shift->_conf_var( 'github-import.remote' => "github" ) }
 
     has refspec => (
         traits        => [qw(Getopt)],
@@ -199,7 +188,7 @@ class Github::Import with MooseX::Getopt {
         documentation => "the refspec to specify to push (default is 'master')",
     );
 
-    sub _build_refspec { shift->_conf_var( refspec => "master" ) }
+    sub _build_refspec { shift->_conf_var( 'github-import.refspec' => "master" ) }
 
     has push_uri => (
         traits        => [qw(Getopt)],
@@ -220,11 +209,7 @@ class Github::Import with MooseX::Getopt {
         traits   => ['NoGetopt'],
         is       => 'ro',
         isa      => 'LWP::UserAgent',
-        default  => sub {
-            my $ua = LWP::UserAgent->new( requests_redirectable => [qw/GET POST/] );
-            $ua->cookie_jar( HTTP::Cookies->new );
-            return $ua;
-        }
+        default  => sub { LWP::UserAgent->new( requests_redirectable => [qw/GET POST/] ) }
     );
 
     has 'logger' => (
@@ -251,10 +236,6 @@ class Github::Import with MooseX::Getopt {
 
     method run(){
         if($self->create){
-            $self->msg('Logging in');
-            $self->do_login;
-            $self->msg('Logged in');
-
             $self->msg('Adding project to github');
             my $url = $self->do_create;
             $self->msg('Project added OK: '. $url);
@@ -273,41 +254,17 @@ class Github::Import with MooseX::Getopt {
         }
     };
 
-    my $LOGIN_URI = URI->new('https://github.com/login');
-    my $LOGIN_SUBMIT_URI = URI->new('https://github.com/session');
-    method do_login() {
-        if ( $self->dry_run ) {
-            $self->username;
-            $self->password;
-            return;
-        }
-        my $ua = $self->user_agent;
-        my $res = $ua->get($LOGIN_URI);
-        $self->err('Error getting login page: ' . $res->status_line) unless $res->is_success;
-        $res = $ua->request(
-            POST( $LOGIN_SUBMIT_URI, [
-                login    => $self->username,
-                password => $self->password,
-                submit   => 'Log in',
-            ]),
-        );
-
-        $self->err('Error logging in: ' . $res->status_line) unless $res->is_success;
-        $self->err('Incorrect login') if $res->content =~ /incorrect login/i;
-    }
-
-    my $CREATE_URI = URI->new('http://github.com/repositories/new');
+    #my $CREATE_URI = URI->new('http://github.com/repositories/new');
     my $CREATE_SUBMIT_URI = URI->new('http://github.com/repositories');
     method do_create(){
         unless ( $self->dry_run ) {
-            my $ua = $self->user_agent;
-            my $res = $ua->get($CREATE_URI);
-            $self->err('Error getting creation page: ' . $res->status_line) unless $res->is_success;
-            $res = $ua->request(
+            my $res = $self->user_agent->request(
                 POST( $CREATE_SUBMIT_URI, [
                     'repository[name]'   => $self->project_name,
                     'repository[public]' => 'true',
                     'commit'             => 'Create repository',
+                    'login'              => $self->username,
+                    'token'              => $self->token,
                 ]),
             );
 
@@ -317,26 +274,32 @@ class Github::Import with MooseX::Getopt {
         return tt 'http://github.com/[% self.username %]/[% self.project_name %]/tree/master';
     };
 
-    method run_git(Str $command, Bool :$ignore_errors, Bool :$print_output){
+    method run_git(ArrayRef $command, Bool :$ignore_errors, Bool :$print_output){
         if ( $self->dry_run ) {
-            $self->msg("/usr/bin/env git $command");
+            $self->msg("git @$command");
         } else {
-            my $dir = pushd $self->project;
-            my $output = `/usr/bin/env git $command 2>&1`;
-            $self->err("Error running 'git $command': $output")
-              if $output =~ /^fatal:/sm && !$ignore_errors;
-            $self->msg($output) if $output && $print_output;
+            my $method = $print_output ? "command_noisy" : "command";
+            $self->git_handle->$method(@$command);
         }
     }
 
     method do_add_remote() {
         my $remote = $self->remote;
         my $push   = $self->push_uri;
-        $self->run_git(
-            "remote add $remote $push",
-            ignore_errors => 1,
-            print_output  => 0,
-        );
+
+        if ( defined( my $url = $self->_conf_var("remote.${remote}.url") ) ) {
+            if ( $url ne $push ) {
+                $self->err("remote $remote is already configured as $url");
+            } else {
+                $self->msg("remote $remote already added");
+            }
+        } else {
+            $self->run_git(
+                [qw(remote add), $remote, $push],
+                ignore_errors => 1,
+                print_output  => 0,
+            );
+        }
     }
 
     method do_push() {
@@ -348,7 +311,7 @@ class Github::Import with MooseX::Getopt {
             : ( $self->push_tags ? "--tags" : (), $remote, $self->refspec );
 
         $self->run_git(
-            "push @args",
+            [ push => @args ],
             print_output => 1,
         );
     }
@@ -367,16 +330,13 @@ Github::Import - Import your project into L<http://github.com>
 =head1 SYNOPSIS
 
     % cd some_project_in_git
-    % github-import --username jrockway --password whatever --add-remote --push-mode all
+    % github-import --username jrockway --token decafbad --add-remote --push-mode all
 
 You can also create a config file. Here is an example using a real man's editor:
 
-    % cat > ~/.github-import
-    ---
-    username: jrockway
-    password: ilovehellokitty
-    remote:   origin # if you don't like "github"
-    ^D
+    % git config --add github.user jrockway
+    % git config --add github.token 91ceb00b1es
+    % git config --add github-import.remote origin # if you don't like "github"
     % cd some_other_project_in_git
     % github-import
 
@@ -387,18 +347,22 @@ L<http://github.com>.
 
 =head1 CONFIGURATION
 
-The configuration file is a YAML file whose values are used as defaults for the
-attributes docuented below.
+The standard git configuration file is used to obtain values for the attributes
+listed below.
 
 If no value is specified in the config file, the default one in the
 documentation will be used.
 
 For instance to not push to github, set:
 
-    push: 0
+    [github-import]
+        push: false
 
 You can override on the command line by specifying C<--no-push> or C<--push>
 depending on what you have in the file and what is the default.
+
+All variables are taken from C<github-import> except C<username> and C<token>
+which are taken from C<github.user> and C<github.token>.
 
 =head1 ATTRIBUTES
 
@@ -408,17 +372,14 @@ depending on what you have in the file and what is the default.
 
 If true nothing will actually be done, but the output will be printed.
 
-=item config_file
-
-Defaults to C<~/.github-import>.
-
 This is a YAML file containing values for attributes.
 
 =item use_config_file
 
 Defaults to false.
 
-The C<github-import> command line tool sets this attribute.
+The C<github-import> command line tool sets this attribute to enable getting
+configuration data.
 
 =item username
 
@@ -426,9 +387,9 @@ The username for github.com
 
 If none is provided or in the config file uses C<$ENV{USER}>.
 
-=item password
+=item token
 
-The password for github.com
+The api token for github.com
 
 =item remote
 
@@ -506,10 +467,6 @@ L<MooseX::Getopt>
 =item run
 
 Import the repository by running all steps
-
-=item do_login
-
-Login the L<LWP::UserAgent> instance to github.
 
 =item do_create
 
