@@ -1,6 +1,8 @@
 use MooseX::Declare;
 
 class Github::Import with MooseX::Getopt {
+    # for the PAUSE indexer
+    package Github::Import;
     use Moose::Util::TypeConstraints qw(enum);
     use MooseX::Types::Path::Class qw(Dir File);
     use LWP::UserAgent;
