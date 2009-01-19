@@ -10,7 +10,6 @@ class Github::Import with MooseX::Getopt {
     use File::pushd 'pushd';
     use Path::Class;
     use Carp qw(croak);
-    use File::HomeDir;
     use Git;
 
     use namespace::clean -except => 'meta';
@@ -29,23 +28,17 @@ class Github::Import with MooseX::Getopt {
         isa           => File,
         is            => "ro",
         coerce        => 1,
-        lazy_build    => 1,
         cmd_flag      => "config-file",
         cmd_aliases   => "f",
         documentation => "Use an alternate config file",
     );
-
-    sub _build_config_file {
-        dir(File::HomeDir->my_home)->file(".github-import");
-    }
 
     sub _git_conf {
         my ( $self, $method, $var, $default ) = @_;
 
         return $default unless $self->use_config_file;
 
-        local $ENV{GIT_CONFIG_LOCAL} = $self->config_file->stringify
-            if $self->has_config_file or not exists $ENV{GIT_CONFIG_LOCAL};
+        local $ENV{GIT_CONFIG} = $self->config_file->stringify if $self->has_config_file;
 
         if ( defined( my $value = $self->git_handle->$method($var) ) ) {
             return $value;
@@ -86,7 +79,10 @@ class Github::Import with MooseX::Getopt {
         documentation => 'username for github.com (defaults to $ENV{USER})',
     );
 
-    sub _build_username { shift->_conf_var( 'github.user' => $ENV{USER} ) }
+    sub _build_username {
+        my $self = shift;
+        $self->_conf_var( 'github-import.user' ) || $self->_conf_var( 'github.user' => $ENV{USER} );
+    }
 
     has token => (
         traits      => [qw(Getopt)],
@@ -97,7 +93,10 @@ class Github::Import with MooseX::Getopt {
         documentation => "api token for github.com",
     );
 
-    sub _build_token { shift->_conf_var('github.token') || croak "'token' is required" }
+    sub _build_token {
+        my $self = shift;
+        $self->_conf_var('github-import.token') || $self->_conf_var('github.token') || croak "'token' is required";
+    }
 
     has dry_run => (
         traits      => [qw(Getopt)],
@@ -381,7 +380,7 @@ You can override on the command line by specifying C<--no-push> or C<--push>
 depending on what you have in the file and what is the default.
 
 All variables are taken from C<github-import> except C<username> and C<token>
-which are taken from C<github.user> and C<github.token>.
+which also fall back to C<github.user> and C<github.token>.
 
 =head1 ATTRIBUTES
 
