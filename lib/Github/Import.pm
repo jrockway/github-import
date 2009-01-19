@@ -8,7 +8,6 @@ class Github::Import with MooseX::Getopt {
     use LWP::UserAgent;
     use HTTP::Request::Common 'POST';
     use URI;
-    use String::TT 'tt';
     use File::pushd 'pushd';
     use Path::Class;
     use Carp qw(croak);
@@ -211,19 +210,32 @@ class Github::Import with MooseX::Getopt {
 
     sub _build_refspec { shift->_conf_var( 'github-import.refspec' => "master" ) }
 
+    has github_path => (
+        traits     => [qw(NoGetopt)],
+        isa        => "Str",
+        is         => "ro",
+        lazy_build => 1,
+    );
+
+    sub _build_github_path {
+        my $self = shift;
+        sprintf "%s/%s", $self->username, $self->project_name;
+    }
+
     has push_uri => (
         traits        => [qw(Getopt)],
         isa           => "Str",
         is            => "ro",
-        lazy          => 1,
-        default       => sub {
-            my $self = shift;
-            tt 'git@github.com:[% self.username %]/[% self.project_name %].git';
-        },
+        lazy_build    => 1,
         cmd_flag      => "push-uri",
         cmd_aliases   => "u",
         documentation => "override the default github push uri",
     );
+
+    sub _build_push_uri {
+        my $self = shift;
+        sprintf 'git@github.com:' . $self->github_path . '.git';
+    }
 
     # internals
     has 'user_agent' => (
@@ -263,7 +275,7 @@ class Github::Import with MooseX::Getopt {
         }
 
         if($self->add_remote){
-            $self->msg(tt 'Adding remote "[% self.remote %]" to existing working copy');
+            $self->msg(sprintf 'Adding remote "%s" to existing working copy', $self->remote);
             $self->do_add_remote;
             $self->msg('Remote added');
         };
@@ -292,7 +304,7 @@ class Github::Import with MooseX::Getopt {
             # XXX: not sure how to detect errors here, other than the obvious
             $self->err('Error creating project: ' . $res->status_line) unless $res->is_success;
         }
-        return tt 'http://github.com/[% self.username %]/[% self.project_name %]/tree/master';
+        return 'http://github.com/' . $self->github_path;
     };
 
     method run_git(ArrayRef $command, Bool :$ignore_errors, Bool :$print_output){

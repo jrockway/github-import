@@ -12,7 +12,6 @@ requires "MooseX::Types::Path::Class";
 requires "LWP::UserAgent";
 requires "Crypt::SSLeay"; # https
 requires "URI";
-requires "String::TT";
 requires "File::pushd";
 requires "File::HomeDir";
 requires "Test::use::ok";
