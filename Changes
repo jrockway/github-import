@@ -1,0 +1,6 @@
+0.02
+    - use git config instead of a yaml file
+    - use github auth token instead of password
+
+0.01
+    - Initial release
