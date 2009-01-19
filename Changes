@@ -1,3 +1,7 @@
+0.03
+    - PAUSE doesn't index without 'package ...;', a redundant declaration was
+      added
+
 0.02
     - use git config instead of a yaml file
     - use github auth token instead of password
