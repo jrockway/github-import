@@ -258,7 +258,7 @@ has 'logger' => (
     is      => 'ro',
     isa     => 'CodeRef',
     default => sub {
-        sub { print {*STDERR} @_, "\n" },
+        return sub { warn "@_\n" }
     },
 );
 
