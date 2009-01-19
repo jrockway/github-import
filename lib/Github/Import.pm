@@ -263,8 +263,8 @@ has 'logger' => (
 );
 
 sub msg {
-    my ( $self, $msg ) = @_;
-    $self->logger->($msg);
+    my ( $self, @msg ) = @_;
+    $self->logger->(@msg);
 }
 
 sub err {
