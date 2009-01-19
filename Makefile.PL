@@ -6,6 +6,7 @@ name 'Github-Import';
 all_from 'lib/Github/Import.pm';
 
 requires "Moose" => "0.64";
+requires "namespace::clean";
 requires "MooseX::Getopt";
 requires "MooseX::Types::Path::Class";
 requires "LWP::UserAgent";
