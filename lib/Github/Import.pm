@@ -381,6 +381,10 @@ sub do_add_remote {
         $self->run_git(
             [qw(remote add), $remote, $push],
         );
+
+        $self->run_git(
+            [qw(config github.repo), $self->project_name],
+        );
     }
 }
 
