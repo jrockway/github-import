@@ -16,7 +16,7 @@ my @log;
 
 my $g = Github::Import->new(
     username => "foo",
-    password => "bar",
+    token    => "hellokitty",
     project  => $dist->subdir("lib"),
     dry_run  => 1,
     logger   => sub {

@@ -508,7 +508,7 @@ Defaults to the basename of C<project>.
 
 If true a repository will be created on github.
 
-Defaults to true. Requires C<username> and C<password>.
+Defaults to true. Requires C<username> and C<token>.
 
 =item add_remote
 
