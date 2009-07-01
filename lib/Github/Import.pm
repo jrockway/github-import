@@ -416,6 +416,7 @@ Github::Import - Import your project into L<http://github.com>
 
 =head1 SYNOPSIS
 
+    # You can see your token at https://github.com/account
     % cd some_project_in_git
     % github-import --username jrockway --token decafbad --add-remote --push-mode all
 

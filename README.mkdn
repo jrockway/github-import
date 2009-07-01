@@ -1,7 +1,8 @@
 # How do I use it?
 
+    # You can see your token at https://github.com/account
     % cd some_project_in_git
-    % github-import --username jrockway --password whatever --add-remote --push-mode all
+    % github-import --username jrockway --token decafbad --add-remote --push-mode all
 
 You can also create a config file. Here is an example using a real man's editor:
 
