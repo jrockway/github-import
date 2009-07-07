@@ -1,3 +1,7 @@
+0.05
+    - Add --lowercase
+    - project name cleanups
+
 0.04
     - Remove superflous deps
     - add --ssl flag
