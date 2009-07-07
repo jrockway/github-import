@@ -7,7 +7,7 @@ use Carp qw(croak);
 
 use namespace::clean -except => 'meta';
 
-with qw(MooseX::Getopt);
+with qw(MooseX::Getopt::Dashes);
 
 our $VERSION = "0.04";
 
@@ -23,7 +23,6 @@ has config_file => (
     isa           => File,
     is            => "ro",
     coerce        => 1,
-    cmd_flag      => "config-file",
     cmd_aliases   => "f",
     documentation => "Use an alternate config file",
     predicate     => "has_config_file",
@@ -108,7 +107,6 @@ has dry_run => (
     traits      => [qw(Getopt)],
     isa         => "Bool",
     is          => "ro",
-    cmd_flag    => "dry-run",
     cmd_aliases => "n",
     documentation => "don't actually do anything",
 );
@@ -128,7 +126,6 @@ has project_name => (
     is            => 'ro',
     isa           => 'Str',
     lazy_build    => 1,
-    cmd_flag      => "project-name",
     cmd_aliases   => "N",
     documentation => "the name of the project to create",
 );
@@ -179,7 +176,6 @@ has add_remote => (
     traits        => [qw(Getopt)],
     is            => "ro",
     isa           => "Bool",
-    cmd_flag      => "add-remote",
     lazy_build    => 1,
     cmd_aliases   => "a",
     documentation => "add a remote for github to .git/config (defaults to true)",
@@ -204,7 +200,6 @@ has push_mode => (
     is            => "ro",
     isa           => enum([qw(all mirror)]),
     predicate     => "has_push_mode",
-    cmd_flag      => "push-mode",
     cmd_aliases   => "m",
     documentation => "'all' or 'mirror', overrides other push options",
 );
@@ -248,7 +243,6 @@ has push_uri => (
     isa           => "Str",
     is            => "ro",
     lazy_build    => 1,
-    cmd_flag      => "push-uri",
     cmd_aliases   => "u",
     documentation => "override the default github push uri",
 );
