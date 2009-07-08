@@ -4,9 +4,15 @@
     % cd some_project_in_git
     % github-import --username jrockway --token decafbad --add-remote --push-mode all
 
-You can also create a config file. Here is an example using a real man's editor:
+You can also set default values for the command-line parameters via
+"git config".
 
     % git config --global --add github.user jrockway
     % git config --global --add github.token decafbad
     % cd some_other_project_in_git
     % github-import
+
+Now you won't have to type in your username and github token for every
+request; the fields will be automatically set from your git
+configuration file.  (You can of course override the defaults on the
+command-line.)
