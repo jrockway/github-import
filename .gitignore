@@ -1,0 +1,10 @@
+META.yml
+Makefile
+Makefile.old
+pm_to_blib
+blib
+coverdb
+nytprof.out
+inc
+MANIFEST
+MANIFEST.BAK
