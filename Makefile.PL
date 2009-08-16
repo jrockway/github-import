@@ -8,6 +8,7 @@ all_from 'lib/Github/Import.pm';
 requires "Moose" => "0.64";
 requires "namespace::clean";
 requires "MooseX::Getopt";
+requires "MooseX::Getopt::Dashes";
 requires "MooseX::Types::Path::Class";
 requires "LWP::UserAgent";
 requires "URI";
