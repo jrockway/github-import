@@ -145,7 +145,7 @@ has lowercase => (
     traits        => [qw(Getopt)],
     is            => 'ro',
     isa           => 'Bool',
-    default       => 1,
+    default       => 0,
     cmd_aliases   => "l",
     documentation => "lowercase the project name for compatibility",
 );
