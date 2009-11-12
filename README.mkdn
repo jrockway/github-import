@@ -6,11 +6,7 @@
 
 You can also create a config file. Here is an example using a real man's editor:
 
-    % cat > ~/.github-import
-    ---
-    username: jrockway
-    password: ilovehellokitty
-    remote:   origin # if you don't like "github"
-    ^D
+    % git config --global --add github.user jrockway
+    % git config --global --add github.token decafbad
     % cd some_other_project_in_git
     % github-import
