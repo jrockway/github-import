@@ -314,6 +314,17 @@ sub run {
 
     if($self->push){
         $self->msg('Pushing existing master to github');
+
+        # Even when github has created the repo we could still get
+        # errors like this because it lags:
+        ## Pushing existing master to github
+        ## fatal: '/data/repositories/c/c3/30/32/avar/digest-whirlpool.git' does not appear to be a git repository
+        ## fatal: The remote end hung up unexpectedly
+        ## push --tags origin master: command returned error: 128
+        ##
+        # So sleep for a bit before pushing to the repo
+        sleep 3;
+
         $self->do_push;
         $self->msg('Pushed OK');
     }
