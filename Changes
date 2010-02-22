@@ -1,3 +1,6 @@
+0.XX
+    - Support ssl and lowercase in the config file; make output indicate use of https
+
 0.05
     - Add --lowercase
     - project name cleanups
