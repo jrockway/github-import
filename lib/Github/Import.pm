@@ -98,10 +98,12 @@ has ssl => (
     traits        => [qw(Getopt)],
     is            => 'ro',
     isa           => 'Bool',
-    default       => 0,
+    lazy_build    => 1,
     documentation => "use https instead of http",
     cmd_aliases   => "S",
 );
+
+sub _build_ssl { shift->_conf_bool('github-import.ssl', 0) }
 
 has dry_run => (
     traits      => [qw(Getopt)],
@@ -368,7 +370,7 @@ sub do_create {
         # XXX: not sure how to detect errors here, other than the obvious
         $self->err('Error creating project: ' . $res->status_line) unless $res->is_success;
     }
-    return 'http://github.com/' . $self->github_path;
+    return $uri->scheme . '://github.com/' . $self->github_path;
 };
 
 sub run_git {
