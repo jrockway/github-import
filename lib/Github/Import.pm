@@ -37,7 +37,8 @@ sub _git_conf {
 
     if ( defined( my $value = $self->git_handle->$method($var) ) ) {
         return $value;
-    } else {
+    }
+    else {
         return $default;
     }
 }
@@ -147,10 +148,12 @@ has lowercase => (
     traits        => [qw(Getopt)],
     is            => 'ro',
     isa           => 'Bool',
-    default       => 0,
+    lazy_build    => 1,
     cmd_aliases   => "l",
     documentation => "lowercase the project name for compatibility",
 );
+
+sub _build_lowercase { shift->_conf_bool( 'github-import.lowercase' => 0 ) }
 
 has description => (
     traits        => [qw(Getopt)],
