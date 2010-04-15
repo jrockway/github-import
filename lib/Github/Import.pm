@@ -344,6 +344,9 @@ sub run {
 
         $self->do_push;
         $self->msg('Pushed OK');
+
+        $self->update_config_for_pull;
+        $self->msg('Config added to pull from github too');
     }
 };
 
@@ -429,6 +432,23 @@ sub do_push {
     $self->run_git(
         [ push => @args ],
         print_output => 1,
+    );
+}
+
+sub update_config_for_pull {
+    my $self = shift;
+    my $remote = $self->remote;
+
+    $self->run_git(
+        [ config => 'branch.master.remote', $remote ],
+    );
+
+    $self->run_git(
+        [ config => 'branch.master.merge', 'refs/heads/master' ],
+    );
+
+    $self->run_git(
+        [ config => 'branch.master.rebase', 'true' ],
     );
 }
 
