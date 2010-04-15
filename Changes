@@ -1,5 +1,6 @@
-0.XX
+0.06
     - Support ssl and lowercase in the config file; make output indicate use of https
+    - Add necessary git config to *pull* from the remote you just made
 
 0.05
     - Add --lowercase
