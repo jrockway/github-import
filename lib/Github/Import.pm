@@ -258,7 +258,7 @@ has github_path => (
 
 sub _build_github_path {
     my $self = shift;
-    sprintf "%s/%s", $self->username, $self->project_name;
+    return join '/', $self->username, $self->project_name;
 }
 
 has push_uri => (
@@ -272,7 +272,22 @@ has push_uri => (
 
 sub _build_push_uri {
     my $self = shift;
-    sprintf 'git@github.com:' . $self->github_path . '.git';
+    return 'git@github.com:' . $self->github_path . '.git';
+}
+
+has setup_rebase => (
+    traits        => [qw(Getopt)],
+    isa           => "Bool",
+    is            => "ro",
+    lazy_build    => 1,
+    documentation => "setup the new ref to auto-rebase when pulled",
+);
+
+sub _build_setup_rebase {
+    my $self = shift;
+    my $config = $self->_conf_var('branch.autosetuprebase') || 'never';
+    return 1 if $config eq 'remote' || $config eq 'always';
+    return 0;
 }
 
 # internals
@@ -343,10 +358,8 @@ sub run {
         sleep 3;
 
         $self->do_push;
-        $self->msg('Pushed OK');
-
         $self->update_config_for_pull;
-        $self->msg('Config added to pull from github too');
+        $self->msg('Pushed OK');
     }
 };
 
@@ -447,9 +460,11 @@ sub update_config_for_pull {
         [ config => 'branch.master.merge', 'refs/heads/master' ],
     );
 
+    # if the standard option branch.autosetuprebase is set, then we do
+    # the same thing that "git clone" and other utils do.
     $self->run_git(
-        [ config => 'branch.master.rebase', 'true' ],
-    );
+        [ config => 'branch.master.rebase', 'true' ]
+    ) if $self->setup_rebase;
 }
 
 1;
