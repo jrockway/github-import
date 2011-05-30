@@ -204,7 +204,7 @@ has add_remote => (
     documentation => "add a remote for github to .git/config (defaults to true)",
 );
 
-sub _build_add_remote { shift->_conf_bool( 'github-import.add_remote' => 1 ) }
+sub _build_add_remote { shift->_conf_bool( 'github-import.add-remote' => 1 ) }
 
 has push_tags => (
     traits        => [qw(Getopt)],
@@ -216,7 +216,7 @@ has push_tags => (
     documentation => "specify --tags to push (default is true)",
 );
 
-sub _build_push_tags { shift->_conf_bool( 'github-import.push_tags' => 1 ) }
+sub _build_push_tags { shift->_conf_bool( 'github-import.push-tags' => 1 ) }
 
 has push_mode => (
     traits        => [qw(Getopt)],
