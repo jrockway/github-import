@@ -9,7 +9,7 @@ use namespace::clean -except => 'meta';
 
 with qw(MooseX::Getopt::Dashes);
 
-our $VERSION = "0.06";
+our $VERSION = "0.07";
 
 has use_config_file => (
     traits  => [qw(NoGetopt)],
