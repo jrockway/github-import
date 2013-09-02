@@ -17,5 +17,7 @@ requires "Test::use::ok";
 requires "Test::Exception";
 requires "Git";
 
+repository 'https://github.com/jrockway/github-import';
+
 install_script 'bin/github-import';
 WriteAll();
